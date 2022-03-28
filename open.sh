@@ -165,16 +165,16 @@ fi
 
 ### Manage presets {{{
 _main_presets() {
-    local action="$1"
-    local preset="$2"
+    local _action="$1"
+    local _preset="$2"
     _req_name() {
-        if [[ -z $preset ]]; then
-            echo "Usage: $BIN -p $action <name>"
+        if [[ -z $_preset ]]; then
+            echo "Usage: $BIN -p $_action <name>"
             return 1
         fi
     }
 
-    case $action in
+    case $_action in
         l|list)
             echo "Presets:"
             for file in "$_PRESETS_DIR/"*; do
@@ -184,15 +184,32 @@ _main_presets() {
             ;;
         n|new)
             _req_name
-            _osh_preset_create $preset
+            _osh_preset_create "$_preset"
             ;;
         e|edit)
             _req_name
-            # TODO
+            local _preset_file=$(_osh_preset_file "$_preset")
+            if [[ -f $_preset_file ]]; then
+                echo "Opening preset '$_preset' in editor.."
+                _edit_file "$_preset_file"
+                if [[ ! -x $_preset_file ]]; then
+                    chmod +x "$_preset_file"
+                fi
+            else
+                echo "Preset '$_preset' does not exist"
+                return 1
+            fi
             ;;
         d|del|delete)
             _req_name
-            # TODO
+            local _preset_file=$(_osh_preset_file "$_preset")
+            if [[ -f $_preset_file ]]; then
+                rm "$_preset_file"
+                echo "Preset '$_preset' deleted"
+            else
+                echo "Preset '$_preset' does not exist"
+                return 1
+            fi
             ;;
         *)
             echo "Usage: $BIN -p list OR $BIN -p new/edit/del <name>"
@@ -202,7 +219,7 @@ _main_presets() {
 }
 ### }}}
 
-### {{{
+### Bind project {{{
 _main_bind() {
     _send_usage() {
         echo "Usage: $BIN -b <name> <preset> [-f <file> | -d <dir>]"
