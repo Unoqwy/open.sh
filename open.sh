@@ -68,6 +68,24 @@ _osh_proj_load_map() {
         projects[$_name,1]=$_path
     done < "$_PROJ_MAP_FILE"
 }
+
+# $1: project name
+# $2: preset
+# $3: path
+_osh_proj_bind() {
+    if [[ -z "$1" || -z "$2" || -z "$3" ]]; then
+        return 1
+    fi
+
+    if [[ ! -f $_PROJ_MAP_FILE ]]; then
+        touch "$_PROJ_MAP_FILE"
+    fi
+    local _entry="$1;$2;$3"
+    local updated=$(sed -i "s|^$1;.*\$|$_entry|w /dev/stdout" "$_PROJ_MAP_FILE")
+    if [[ -z $updated ]]; then
+        echo "$_entry" >> "$_PROJ_MAP_FILE"
+    fi
+}
 ## }}}
 
 ## Presets {{{
@@ -91,7 +109,7 @@ _osh_preset_create() {
     before=$(cat <<END
 #!/bin/sh
 # This script will be executed to open workspaces of preset '$1'.
-# \$1 is the project dir, and the shebang can be changed.
+# \$1 is the project dir/file, and the shebang can be changed.
 # NB: Exit without making changes to abort preset creation.
 END
     )
@@ -114,6 +132,28 @@ _osh_preset_file() {
     fi
 
     echo "$_PRESETS_DIR/$1"
+}
+
+# $1: preset name
+_osh_preset_check() {
+    local _preset="$1"
+    if [[ -z "$_preset" ]]; then
+        echo "Preset name cannot be empty"
+        return 1
+    fi
+
+    local _preset_file=$(_osh_preset_file "$_preset")
+    if [[ -f "$_preset_file" ]]; then
+        if [[ -x "$_preset_file" ]]; then
+            return 0
+        else
+            echo "Preset '$_preset' is invalid: its file is not executable"
+            return 1
+        fi
+    else
+        echo "Preset '$_preset' does not exist"
+        return 1
+    fi
 }
 ## }}}
 
@@ -162,6 +202,53 @@ _main_presets() {
 }
 ### }}}
 
+### {{{
+_main_bind() {
+    _send_usage() {
+        echo "Usage: $BIN -b <name> <preset> [-f <file> | -d <dir>]"
+        echo "Omitting '-f' and '-d' will default to current working directory."
+    }
+
+    local _name="$1"
+    local _preset="$2"
+    if [[ -z $_name || -z $_preset ]]; then
+        _send_usage
+        return 1
+    fi
+
+    local _path
+    case "$3" in
+        "")
+            _path=$(readlink -m .)
+            ;;
+        -f|--file)
+            _path=$(readlink -m "$4")
+            if [[ ! -f "$_path" ]]; then
+                echo "Path given to '-f' is not a file"
+                return 1
+            fi
+            ;;
+        -d|--dir)
+            _path=$(readlink -m "$4")
+            if [[ ! -d "$_path" ]]; then
+                echo "Path given to '-d' is not a directory"
+                return 1
+            fi
+            ;;
+        *)
+            echo "Invalid target argument:"
+            _send_usage
+            return 1
+            ;;
+    esac
+
+    if _osh_preset_check "$_preset"; then
+        _osh_proj_bind "$_name" "$_preset" "$_path"
+        echo "Project '$_name' bound to preset '$_preset'"
+    fi
+}
+### }}}
+
 ### Open project {{{
 _main_open() {
     _osh_proj_load_map
@@ -193,7 +280,10 @@ case $1 in
         shift
         _main_presets $@
         ;;
-    # TODO: o -r <proj> <preset> [dir]
+    -b|--bind)
+        shift
+        _main_bind $@
+        ;;
     *)
         _main_open $@
         ;;
