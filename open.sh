@@ -5,7 +5,7 @@
 set -o errexit
 ## }}}
 
-BIN="$0"
+BIN="$(basename "$0")"
 OSH_DIR="${OSH_DIR:-"$HOME/.config/osh"}"
 
 ## Vars validation {{{
@@ -158,11 +158,6 @@ _osh_preset_check() {
 ## }}}
 
 ## Main {{{
-if [[ -z "$1" ]]; then
-    echo "Invalid usage"
-    exit 1
-fi
-
 ### Manage presets {{{
 _main_presets() {
     local _action="$1"
@@ -266,6 +261,18 @@ _main_bind() {
 }
 ### }}}
 
+### List projects {{{
+_main_list_proj() {
+    # TODO: human formatting (but keep machine readable lines when passing to pipe)
+    _osh_proj_load_map
+    for key in "${!projects[@]}"; do
+        if [[ $key == *",0" ]]; then
+            echo "${key::-2}"
+        fi
+    done
+}
+### }}}
+
 ### Open project {{{
 _main_open() {
     _osh_proj_load_map
@@ -293,6 +300,10 @@ _main_open() {
 ### }}}
 
 case $1 in
+    "")
+        echo "Usage: $BIN <project> OR $BIN -p/-b/-l <..>"
+        exit 1
+        ;;
     -p|--preset|--presets)
         shift
         _main_presets $@
@@ -300,6 +311,16 @@ case $1 in
     -b|--bind)
         shift
         _main_bind $@
+        ;;
+    -l|--list)
+        _main_list_proj $@
+        ;;
+    -*)
+        echo "Invalid argument! Allowed ones:"
+        echo "* '$BIN -p' to manage presets"
+        echo "* '$BIN -b' to bind a project"
+        echo "* '$BIN -l' to list projects"
+        exit 1
         ;;
     *)
         _main_open $@
