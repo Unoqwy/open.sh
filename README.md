@@ -2,6 +2,16 @@
 
 Small CLI tool to open any project on your system.
 
+## Installation
+
+Simply download the file `open.sh` from this repository to a location within your `$PATH`.
+
+For the lazy people out there, you can run the command below to install it automatically to `/usr/local/bin/open`.
+
+```sh
+curl https://raw.githubusercontent.com/Unoqwy/open.sh/master/install.sh | sudo bash -s
+```
+
 ## Usage
 
 ```sh
@@ -21,7 +31,7 @@ open myproj # calls `code "$HOME/my-project"`
 
 ## Integration example
 
-Using `open` from the CLI is nice, but I depending on your use case, it might be more convenient to open a prompt and bind it to a global system keybinding. Here's an example to open such a prompt using rofi.
+Using `open` from the CLI is nice but depending on your use case, it might be more convenient to open a prompt and bind it to a global system keybinding. Here's an example to open such a prompt using rofi:
 
 ```sh
 #!/bin/sh
